@@ -1,0 +1,195 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+    <title>Dashboard - Credit Book System</title>
+    <meta content="" name="description">
+    <meta content="" name="keywords">
+
+    <!-- Favicons -->
+    <link href="assets/img/favicon.png" rel="icon">
+    <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.gstatic.com" rel="preconnect">
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
+
+    <!-- Vendor CSS Files -->
+    <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
+    <link href="assets/vendor/quill/quill.snow.css" rel="stylesheet">
+    <link href="assets/vendor/quill/quill.bubble.css" rel="stylesheet">
+    <link href="assets/vendor/remixicon/remixicon.css" rel="stylesheet">
+    <link href="assets/vendor/simple-datatables/style.css" rel="stylesheet">
+
+    <!-- Template Main CSS File -->
+    <link href="assets/css/style.css" rel="stylesheet">
+    <HeadOutlet @rendermode="InteractiveServer" />
+</head>
+
+<body>
+    <Routes @rendermode="InteractiveServer" />
+    <script src="_framework/blazor.web.js"></script>
+    <!-- Vendor JS Files -->
+    <script src="assets/vendor/apexcharts/apexcharts.min.js"></script>
+    <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/vendor/chart.js/chart.umd.js"></script>
+    <script src="assets/vendor/echarts/echarts.min.js"></script>
+    <script src="assets/vendor/quill/quill.js"></script>
+    <script src="assets/vendor/simple-datatables/simple-datatables.js"></script>
+    <script src="assets/vendor/tinymce/tinymce.min.js"></script>
+    <script src="assets/vendor/php-email-form/validate.js"></script>
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- DataTables -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/jquery.dataTables.min.css" />
+    <script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>
+
+    <!-- Responsive DataTables -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.dataTables.min.css" />
+    <script src="https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js"></script>
+
+
+
+    <!-- Template Main JS File -->
+    <script src="assets/js/main.js"></script>
+</body>
+
+</html>
+
+<script>
+    function toggleSidebar() {
+        document.body.classList.toggle('toggle-sidebar');
+    }
+
+    function initializeDataTableWithAjax(selector, ajaxUrl) {
+        $(document).ready(function () {
+             $(selector).append(`
+        <tfoot>
+            <tr>
+                <th colspan="5" style="text-align:right">Total:</th>
+                <th id="totalAmountFooter"></th>
+            </tr>
+        </tfoot>
+    `);
+            $(selector).DataTable({
+                responsive: true,
+                ajax: {
+                    url: ajaxUrl,
+                    type: "GET",
+                    dataSrc: "", // DataTables expects an array of objects
+                },
+                columns: [
+                    { data: "id" },
+                    { data: "date", render: (data) => new Date(data).toLocaleDateString() },
+                    { data: "itemName" },
+                    { data: "quantity" },
+                    { data: "rate", render: $.fn.dataTable.render.number(',', '.', 2, '₹') },
+                    { data: "totalAmount", render: $.fn.dataTable.render.number(',', '.', 2, '₹') },
+                ],
+                footerCallback: function (row, data, start, end, display) {
+                   // Calculate the total sum of the "Total Amount" column
+                   let api = this.api();
+
+                   // Total over all pages
+                   let total = api
+                       .column(5) // Total Amount column index
+                       .data()
+                       .reduce((a, b) => a + parseFloat(b || 0), 0);
+
+                   // Update the footer dynamically
+                   $("#totalAmountFooter").html(`₹${total.toFixed(2)}`);
+        },
+                paging: true,
+                searching: true,
+                ordering: true,
+                lengthMenu: [5, 10, 25, 50, 100],
+                language: {
+                    search: "Filter records:",
+                    lengthMenu: "Show _MENU_ entries",
+                    zeroRecords: "No matching records found",
+                },
+            });
+        });
+    }
+
+    function initializeExpenseForm() {
+    // Calculate Total Amount on Quantity or Rate Change
+    $("#quantity, #rate").on("input", function () {
+        const quantity = parseFloat($("#quantity").val()) || 0;
+        const rate = parseFloat($("#rate").val()) || 0;
+        const totalAmount = quantity * rate;
+        $("#totalAmount").val(totalAmount.toFixed(2));
+      });
+    
+    // Handle Form Submission
+    $("#addExpenseForm").on("submit", function (e) {
+        e.preventDefault();
+
+        const expenseData = {
+          itemName: $("#itemName").val(),
+          date: $("#purchaseDate").val(),
+          quantity: parseFloat($("#quantity").val()),
+          rate: parseFloat($("#rate").val()),
+          totalAmount: parseFloat($("#totalAmount").val()),
+        };
+
+        $.ajax({
+          url: "/api/CreditEntries/AddCreditEntry",
+          type: "POST",
+          contentType: "application/json",
+          data: JSON.stringify(expenseData),
+          success: function (response) {
+            // Show Success Alert
+            showAlert(
+              "success",
+              '<i class="bi bi-check-circle me-1"></i> Expense added successfully!'
+            );
+
+            // Refresh DataTable
+            $("#creditEntriesTable").DataTable().ajax.reload();
+
+            // Close Modal
+            $("#addExpenseModal").modal("hide");
+          },
+          error: function (xhr) {
+            // Show Error Alert
+            const errorMsg = xhr.responseJSON?.message || "An error occurred!";
+            showAlert(
+              "danger",
+              `<i class="bi bi-exclamation-octagon me-1"></i> ${errorMsg}`
+            );
+          },
+        });
+      });
+    
+    // Reset Button Handler
+    $("#addExpenseForm").on("reset", function () {
+        $("#totalAmount").val("");
+      });
+    
+    // Alert Helper Function
+    function showAlert(type, message) {
+        const alertHtml = `
+          <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        `;
+        $("#alertsContainer").html(alertHtml);
+
+        // Auto-hide alert after 5 seconds
+        setTimeout(() => {
+          $(".alert").alert("close");
+        }, 5000);
+      }
+    }
+
+</script>
+

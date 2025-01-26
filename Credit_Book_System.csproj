@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Credit Book System</RootNamespace>
+    <AssemblyName>$(AssemblyName.Replace(' ', '_'))</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Dapper" Version="2.1.35" />
+    <PackageReference Include="datatables.net-dt" Version="2.2.1" />
+    <PackageReference Include="Npgsql" Version="9.0.2" />
+    <PackageReference Include="SonarAnalyzer.CSharp" Version="10.5.0.109200">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EditorConfigFiles Remove="E:\PROJECT\Credit Book System\Credit Book System\.editorconfig" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="E:\PROJECT\Credit Book System\Credit Book System\.editorconfig" />
+  </ItemGroup>
+
+</Project>
