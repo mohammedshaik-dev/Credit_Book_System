@@ -23,9 +23,16 @@ namespace Credit_Book_System.Service
 
         public async Task DeleteCreditEntryAsync(int id) => await _repository.DeleteCreditEntryAsync(id);
 
-        public async Task<IEnumerable<Settlement>> GetSettlementsByCreditEntryIdAsync(int creditEntryId) => await _repository.GetSettlementsByCreditEntryIdAsync(creditEntryId);
+        public async Task<IEnumerable<Settlement>> GetSettlementsByCreditEntryIdAsync() => await _repository.GetSettlementsByCreditEntryIdAsync();
 
         public async Task AddSettlementAsync(Settlement settlement) => await _repository.AddSettlementAsync(settlement);
+
+        public async Task<decimal> GetTotalExpensesAsync() => await _repository.GetTotalExpensesAsync();
+
+        public async Task<decimal> GetTotalPaidAmountAsync() => await _repository.GetTotalPaidAmountAsync();
+
+        public async Task<decimal> GetRemainingBalanceAsync() => await _repository.GetRemainingBalanceAsync();
+
     }
 
 }

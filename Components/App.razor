@@ -64,132 +64,217 @@
 </html>
 
 <script>
-    function toggleSidebar() {
-        document.body.classList.toggle('toggle-sidebar');
-    }
+     function toggleSidebar() {
+         document.body.classList.toggle('toggle-sidebar');
+     }
 
-    function initializeDataTableWithAjax(selector, ajaxUrl) {
-        $(document).ready(function () {
-             $(selector).append(`
-        <tfoot>
-            <tr>
-                <th colspan="5" style="text-align:right">Total:</th>
-                <th id="totalAmountFooter"></th>
-            </tr>
-        </tfoot>
-    `);
-            $(selector).DataTable({
+     function initializeDataTableWithAjax(selector, ajaxUrl) {
+         $(document).ready(function () {
+             $(selector).DataTable({
+                 responsive: true,
+                 ajax: {
+                     url: ajaxUrl,
+                     type: "GET",
+                     dataSrc: "", // DataTables expects an array of objects
+                 },
+                 columns: [
+                     { data: "date", render: (data) => new Date(data).toLocaleDateString() },
+                     { data: "itemName" },
+                     { data: "quantity" },
+                     { data: "rate", render: $.fn.dataTable.render.number(',', '.', 2, '₹') },
+                     { data: "totalAmount", render: $.fn.dataTable.render.number(',', '.', 2, '₹') },
+                     { data: "remainingBalance", render: $.fn.dataTable.render.number(',', '.', 2, '₹')},
+                 ],
+                     footerCallback: function (row, data, start, end, display) {
+         let api = this.api();
+
+         // Total over all pages
+         let total = api
+             .column(4) // Total Amount column index
+             .data()
+             .reduce((a, b) => a + parseFloat(b || 0), 0);
+
+         // Update the DataTable footer
+         $("#totalExpenses").html(`₹${total.toFixed(2)}`);
+     },
+                 paging: true,
+                 searching: true,
+                 ordering: true,
+                 lengthMenu: [5, 10, 25, 50, 100],
+                 language: {
+                     search: "Filter records:",
+                     lengthMenu: "Show_MENU_ entries",
+                     zeroRecords: "No matching records found",
+                 },
+             });
+         });
+     }
+
+     function initializeExpenseForm() {
+     // Calculate Total Amount on Quantity or Rate Change
+     $("#quantity, #rate").on("input", function () {
+         const quantity = parseFloat($("#quantity").val()) || 0;
+         const rate = parseFloat($("#rate").val()) || 0;
+         const totalAmount = quantity * rate;
+         $("#totalAmount").val(totalAmount.toFixed(2));
+       });
+
+     // Handle Form Submission
+     $("#addExpenseForm").on("submit", function (e) {
+         e.preventDefault();
+
+         const expenseData = {
+           itemName: $("#itemName").val(),
+           date: $("#purchaseDate").val(),
+           quantity: parseFloat($("#quantity").val()),
+           rate: parseFloat($("#rate").val()),
+           totalAmount: parseFloat($("#totalAmount").val()),
+           remainingBalance: parseFloat($("#totalAmount").val()),
+         };
+
+         $.ajax({
+           url: "/api/CreditEntries/AddCreditEntry",
+           type: "POST",
+           contentType: "application/json",
+           data: JSON.stringify(expenseData),
+           success: function (response) {
+             // Show Success Alert
+             showAlert(
+               "success",
+               '<i class="bi bi-check-circle me-1"></i> Expense added successfully!'
+             );
+
+             // Refresh DataTable
+             $("#creditEntriesTable").DataTable().ajax.reload();
+
+             // Close Modal
+             $("#addExpenseModal").modal("hide");
+           },
+           error: function (xhr) {
+             // Show Error Alert
+             const errorMsg = xhr.responseJSON?.message || "An error occurred!";
+             showAlert(
+               "danger",
+               `<i class="bi bi-exclamation-octagon me-1"></i> ${errorMsg}`
+             );
+           },
+         });
+       });
+
+     // Reset Button Handler
+     $("#addExpenseForm").on("reset", function () {
+         $("#totalAmount").val("");
+       });
+
+     // Alert Helper Function
+     function showAlert(type, message) {
+         const alertHtml = `
+           <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+             ${message}
+             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+           </div>
+         `;
+         $("#alertsContainer").html(alertHtml);
+
+         // Auto-hide alert after 5 seconds
+         setTimeout(() => {
+           $(".alert").alert("close");
+         }, 5000);
+       }
+
+     }
+
+     function initializePartialPaymentTableWithAjax(selector,ajaxUrl) {
+          $(document).ready(function () {
+             $(selector).DataTable({
+               destroy: true, // Destroy existing table to reload with new data ``
                 responsive: true,
                 ajax: {
-                    url: ajaxUrl,
+                    url:ajaxUrl ,
                     type: "GET",
-                    dataSrc: "", // DataTables expects an array of objects
+                    dataSrc: "",
                 },
                 columns: [
                     { data: "id" },
                     { data: "date", render: (data) => new Date(data).toLocaleDateString() },
-                    { data: "itemName" },
-                    { data: "quantity" },
-                    { data: "rate", render: $.fn.dataTable.render.number(',', '.', 2, '₹') },
-                    { data: "totalAmount", render: $.fn.dataTable.render.number(',', '.', 2, '₹') },
+                    { data: "amountPaid", render: $.fn.dataTable.render.number(',', '.', 2, '₹ ') },
+                    { data: "remainingBalance", render: $.fn.dataTable.render.number(',', '.', 2, '₹ ') }
                 ],
-                footerCallback: function (row, data, start, end, display) {
-                   // Calculate the total sum of the "Total Amount" column
-                   let api = this.api();
-
-                   // Total over all pages
-                   let total = api
-                       .column(5) // Total Amount column index
-                       .data()
-                       .reduce((a, b) => a + parseFloat(b || 0), 0);
-
-                   // Update the footer dynamically
-                   $("#totalAmountFooter").html(`₹${total.toFixed(2)}`);
-        },
                 paging: true,
-                searching: true,
+                searching: false,
                 ordering: true,
-                lengthMenu: [5, 10, 25, 50, 100],
+                lengthMenu: [5, 10, 25, 50],
                 language: {
-                    search: "Filter records:",
-                    lengthMenu: "Show _MENU_ entries",
-                    zeroRecords: "No matching records found",
+                    lengthMenu: "Show_MENU_ entries",
+                    zeroRecords: "No partial payments found",
                 },
             });
-        });
-    }
+         });
 
-    function initializeExpenseForm() {
-    // Calculate Total Amount on Quantity or Rate Change
-    $("#quantity, #rate").on("input", function () {
-        const quantity = parseFloat($("#quantity").val()) || 0;
-        const rate = parseFloat($("#rate").val()) || 0;
-        const totalAmount = quantity * rate;
-        $("#totalAmount").val(totalAmount.toFixed(2));
-      });
-    
-    // Handle Form Submission
-    $("#addExpenseForm").on("submit", function (e) {
-        e.preventDefault();
 
-        const expenseData = {
-          itemName: $("#itemName").val(),
-          date: $("#purchaseDate").val(),
-          quantity: parseFloat($("#quantity").val()),
-          rate: parseFloat($("#rate").val()),
-          totalAmount: parseFloat($("#totalAmount").val()),
-        };
+         }
+     function initializePartialPaymentForm(){
+     $("#addPartialPaymentForm").on("submit", function (e) {
+         e.preventDefault();
 
-        $.ajax({
-          url: "/api/CreditEntries/AddCreditEntry",
-          type: "POST",
-          contentType: "application/json",
-          data: JSON.stringify(expenseData),
-          success: function (response) {
-            // Show Success Alert
-            showAlert(
-              "success",
-              '<i class="bi bi-check-circle me-1"></i> Expense added successfully!'
-            );
+         const paymentData = {
+             date: $("#paymentDate").val(),
+             amountPaid: parseFloat($("#amountPaid").val()),
+         };
 
-            // Refresh DataTable
-            $("#creditEntriesTable").DataTable().ajax.reload();
-
-            // Close Modal
-            $("#addExpenseModal").modal("hide");
-          },
-          error: function (xhr) {
-            // Show Error Alert
-            const errorMsg = xhr.responseJSON?.message || "An error occurred!";
-            showAlert(
-              "danger",
-              `<i class="bi bi-exclamation-octagon me-1"></i> ${errorMsg}`
-            );
-          },
-        });
-      });
-    
-    // Reset Button Handler
-    $("#addExpenseForm").on("reset", function () {
-        $("#totalAmount").val("");
-      });
-    
-    // Alert Helper Function
-    function showAlert(type, message) {
-        const alertHtml = `
-          <div class="alert alert-${type} alert-dismissible fade show" role="alert">
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-          </div>
-        `;
-        $("#alertsContainer").html(alertHtml);
-
-        // Auto-hide alert after 5 seconds
-        setTimeout(() => {
-          $(".alert").alert("close");
-        }, 5000);
-      }
-    }
-
+         $.ajax({
+            url: "/api/CreditEntries/AddSettlement",
+             type: "POST",
+             contentType: "application/json",
+             data: JSON.stringify(paymentData),
+             success: function () {
+                 showAlert("success", "Payment recorded successfully!");
+                 loadOutstandingBalance(); // Refresh balance
+                 // Refresh DataTable
+                   $("#partialPaymentsTable").DataTable().ajax.reload();
+                    // Close Modal
+                   $("#partialPaymentModal").modal("hide");
+             },
+             error: function (jqXHR) {
+                      if (jqXHR.status === 400) {
+                    showAlert("warning", jqXHR.responseText); // Show warning for business logic error
+                } else {
+                    showAlert("danger", "Error adding payment."); // Generic error message
+                }
+             }
+         });
+     });
+     function showAlert(type, message) {
+         const alertHtml = `
+           <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+             ${message}
+             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+           </div>
+         `;
+         $("#alertsContainer").html(alertHtml);
+         // Auto-hide alert after 5 seconds
+         setTimeout(() => {
+           $(".alert").alert("close");
+         }, 5000);
+       }
+     }
+    function loadOutstandingBalance() {
+           $.ajax({
+               url: "/api/CreditEntries/GetOutstandingBalance",
+               type: "GET",
+               success: function (response) {
+                   let totalExpenses = response.totalExpenses || 0;
+                   let totalPaid =response.totalPaid || 0;
+                   let remainingBalance =response.remainingBalance || 0;
+                   // Update the summary box
+                   $("#totalExpenses").text(`₹${totalExpenses.toFixed(2)}`);
+                   $("#totalPaid").text(`₹${totalPaid.toFixed(2)}`);
+                   $("#remainingBalance").text(`₹${remainingBalance.toFixed(2)}`);
+               },
+               error: function () {
+                   console.error("Error fetching total paid amount.");
+               }
+           });
+       }
 </script>
 
